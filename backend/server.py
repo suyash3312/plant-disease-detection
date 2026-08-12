@@ -1,0 +1,412 @@
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
+import base64
+import json
+import logging
+import uuid
+import re
+from pathlib import Path
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from datetime import datetime, timezone, timedelta
+import httpx
+
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
+
+EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
+
+app = FastAPI()
+api_router = APIRouter(prefix="/api")
+
+
+# ---------- Models ----------
+class User(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class DetectRequest(BaseModel):
+    image_base64: str
+    plant_hint: Optional[str] = None
+
+
+class Detection(BaseModel):
+    id: str
+    user_id: Optional[str] = None
+    disease_name: str
+    plant: str
+    is_healthy: bool
+    confidence: int  # 0-100
+    severity: str  # low | moderate | severe
+    severity_score: int  # 0-100
+    symptoms: List[str]
+    treatments: List[str]
+    prevention: List[str]
+    image_data_url: str
+    created_at: datetime
+
+
+# ---------- Auth helpers ----------
+async def get_current_user(request: Request) -> Optional[User]:
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            session_token = auth_header[7:]
+    if not session_token:
+        return None
+    session_doc = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+    if not session_doc:
+        return None
+    expires_at = session_doc.get("expires_at")
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        return None
+    user_doc = await db.users.find_one({"user_id": session_doc["user_id"]}, {"_id": 0})
+    if not user_doc:
+        return None
+    return User(**user_doc)
+
+
+# ---------- Auth Routes ----------
+@api_router.post("/auth/session")
+async def create_session(request: Request, response: Response):
+    body = await request.json()
+    session_id = body.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+
+    async with httpx.AsyncClient() as http_client:
+        r = await http_client.get(
+            "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+            headers={"X-Session-ID": session_id},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid session")
+        data = r.json()
+
+    email = data["email"]
+    name = data.get("name", email)
+    picture = data.get("picture")
+    session_token = data["session_token"]
+
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing:
+        user_id = existing["user_id"]
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {"name": name, "picture": picture}},
+        )
+    else:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        await db.users.insert_one({
+            "user_id": user_id,
+            "email": email,
+            "name": name,
+            "picture": picture,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    await db.user_sessions.insert_one({
+        "user_id": user_id,
+        "session_token": session_token,
+        "expires_at": expires_at.isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7 * 24 * 60 * 60,
+        path="/",
+    )
+    return {"user_id": user_id, "email": email, "name": name, "picture": picture}
+
+
+@api_router.get("/auth/me")
+async def auth_me(request: Request):
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user.model_dump()
+
+
+@api_router.post("/auth/logout")
+async def logout(request: Request, response: Response):
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        await db.user_sessions.delete_one({"session_token": session_token})
+    response.delete_cookie("session_token", path="/")
+    return {"ok": True}
+
+
+# ---------- Detection ----------
+DETECT_SYSTEM_PROMPT = """You are an expert plant pathologist and agronomist. You analyze photos of plant leaves and return a strict JSON diagnosis.
+
+Rules:
+- Only respond with a single JSON object. No prose, no markdown fences.
+- If the image is not a plant/leaf, set is_healthy=false, disease_name="Not a plant image", plant="Unknown", confidence=0, severity="low", severity_score=0, and put a short explanation in symptoms.
+- If the leaf looks healthy, set is_healthy=true, disease_name="Healthy leaf".
+- Otherwise identify the most likely disease.
+
+Return JSON with this exact schema:
+{
+  "plant": "common plant name (e.g. Tomato, Rose, Wheat)",
+  "disease_name": "specific disease name (e.g. Early Blight)",
+  "is_healthy": boolean,
+  "confidence": integer 0-100,
+  "severity": "low" | "moderate" | "severe",
+  "severity_score": integer 0-100,
+  "symptoms": ["short bullet", ...] (2-4 items),
+  "treatments": ["actionable treatment step", ...] (3-5 items),
+  "prevention": ["prevention tip", ...] (3-5 items)
+}
+"""
+
+
+def _extract_json(text: str) -> dict:
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    match = re.search(r"\{[\s\S]*\}", text)
+    if match:
+        text = match.group(0)
+    return json.loads(text)
+
+
+@api_router.post("/detect")
+async def detect(request: Request, payload: DetectRequest):
+    user = await get_current_user(request)
+
+    image_b64 = payload.image_base64
+    if "," in image_b64 and image_b64.strip().startswith("data:"):
+        image_b64 = image_b64.split(",", 1)[1]
+
+    session_id = f"detect_{uuid.uuid4().hex}"
+    chat = (
+        LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id, system_message=DETECT_SYSTEM_PROMPT)
+        .with_model("gemini", "gemini-3-flash-preview")
+    )
+
+    user_text = "Analyze this leaf photo and return the JSON diagnosis."
+    if payload.plant_hint:
+        user_text += f" Plant hint provided by user: {payload.plant_hint}."
+
+    try:
+        response = await chat.send_message(UserMessage(
+            text=user_text,
+            file_contents=[ImageContent(image_base64=image_b64)],
+        ))
+    except Exception as e:
+        logging.exception("Gemini call failed")
+        raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
+
+    raw_text = response if isinstance(response, str) else getattr(response, "content", str(response))
+
+    try:
+        parsed = _extract_json(raw_text)
+    except Exception:
+        logging.error("Could not parse AI response: %s", raw_text)
+        raise HTTPException(status_code=500, detail="Could not parse AI response")
+
+    det_id = f"det_{uuid.uuid4().hex[:16]}"
+    image_data_url = f"data:image/jpeg;base64,{image_b64}"
+    detection = {
+        "id": det_id,
+        "user_id": user.user_id if user else None,
+        "plant": parsed.get("plant", "Unknown"),
+        "disease_name": parsed.get("disease_name", "Unknown"),
+        "is_healthy": bool(parsed.get("is_healthy", False)),
+        "confidence": int(parsed.get("confidence", 0)),
+        "severity": parsed.get("severity", "low"),
+        "severity_score": int(parsed.get("severity_score", 0)),
+        "symptoms": parsed.get("symptoms", []),
+        "treatments": parsed.get("treatments", []),
+        "prevention": parsed.get("prevention", []),
+        "image_data_url": image_data_url,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    if user:
+        await db.detections.insert_one({**detection})
+
+    return detection
+
+
+@api_router.get("/history")
+async def history(request: Request):
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Sign in to view history")
+    items = await db.detections.find({"user_id": user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return items
+
+
+@api_router.delete("/history/{det_id}")
+async def delete_detection(det_id: str, request: Request):
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    result = await db.detections.delete_one({"id": det_id, "user_id": user.user_id})
+    return {"deleted": result.deleted_count}
+
+
+# ---------- Static content: diseases + tips ----------
+DISEASE_LIBRARY = [
+    {
+        "id": "early-blight",
+        "name": "Early Blight",
+        "plant": "Tomato / Potato",
+        "type": "Fungal",
+        "severity": "moderate",
+        "symptoms": "Concentric dark rings on lower leaves, yellow halos, leaf drop.",
+        "treatment": "Prune infected leaves, apply copper fungicide, rotate crops next season.",
+        "image": "https://images.pexels.com/photos/34234358/pexels-photo-34234358.jpeg",
+    },
+    {
+        "id": "powdery-mildew",
+        "name": "Powdery Mildew",
+        "plant": "Cucurbits / Roses",
+        "type": "Fungal",
+        "severity": "moderate",
+        "symptoms": "White powdery coating on leaf surface, distorted new growth.",
+        "treatment": "Milk-water spray (1:9), neem oil, improve airflow around plants.",
+        "image": "https://images.unsplash.com/photo-1580133318324-f2f76d987dd8",
+    },
+    {
+        "id": "leaf-rust",
+        "name": "Leaf Rust",
+        "plant": "Wheat / Beans / Roses",
+        "type": "Fungal",
+        "severity": "severe",
+        "symptoms": "Orange-brown pustules on undersides, yellow spots above.",
+        "treatment": "Remove infected foliage, apply sulfur-based fungicide, avoid overhead watering.",
+        "image": "https://images.pexels.com/photos/2974409/pexels-photo-2974409.jpeg",
+    },
+    {
+        "id": "bacterial-spot",
+        "name": "Bacterial Leaf Spot",
+        "plant": "Peppers / Tomatoes",
+        "type": "Bacterial",
+        "severity": "severe",
+        "symptoms": "Water-soaked spots turning brown, tattered leaf edges.",
+        "treatment": "Copper-based bactericide, remove infected plants, sanitize tools.",
+        "image": "https://images.pexels.com/photos/34234358/pexels-photo-34234358.jpeg",
+    },
+    {
+        "id": "mosaic-virus",
+        "name": "Mosaic Virus",
+        "plant": "Tobacco / Tomato / Cucumber",
+        "type": "Viral",
+        "severity": "severe",
+        "symptoms": "Mottled yellow-green pattern, stunted growth, curled leaves.",
+        "treatment": "No cure — remove and destroy infected plants, control aphid vectors.",
+        "image": "https://images.pexels.com/photos/2974409/pexels-photo-2974409.jpeg",
+    },
+    {
+        "id": "downy-mildew",
+        "name": "Downy Mildew",
+        "plant": "Grapes / Lettuce / Basil",
+        "type": "Oomycete",
+        "severity": "moderate",
+        "symptoms": "Yellow patches upper side, fuzzy gray growth beneath.",
+        "treatment": "Copper fungicide, prune for airflow, water at soil level only.",
+        "image": "https://images.unsplash.com/photo-1580133318324-f2f76d987dd8",
+    },
+]
+
+CARE_TIPS = [
+    {
+        "id": "watering",
+        "title": "Water at the base",
+        "body": "Wet foliage invites fungal spores. Water early morning at soil level so leaves stay dry through the night.",
+        "image": "https://images.unsplash.com/photo-1515150144380-bca9f1650ed9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwxfHxnYXJkZW4lMjBwbGFudCUyMGNhcmUlMjBuYXR1cmV8ZW58MHx8fHwxNzg1NDA0NTMxfDA&ixlib=rb-4.1.0&q=85",
+    },
+    {
+        "id": "airflow",
+        "title": "Give plants breathing room",
+        "body": "Space plants generously and prune inner branches. Good airflow dries leaves quickly and starves pathogens.",
+        "image": "https://images.pexels.com/photos/10894359/pexels-photo-10894359.jpeg",
+    },
+    {
+        "id": "rotate",
+        "title": "Rotate crop families",
+        "body": "Never plant the same family in the same spot two years running. Rotation breaks the life cycle of soil-borne disease.",
+        "image": "https://images.unsplash.com/photo-1580133318324-f2f76d987dd8",
+    },
+    {
+        "id": "sanitize",
+        "title": "Sanitize your tools",
+        "body": "Wipe pruners with isopropyl alcohol between plants. A single infected cut can carry bacterial spot across the garden.",
+        "image": "https://images.pexels.com/photos/34234358/pexels-photo-34234358.jpeg",
+    },
+    {
+        "id": "inspect",
+        "title": "Weekly leaf check",
+        "body": "Turn leaves over and inspect stems every week. Catching disease early is the single biggest predictor of recovery.",
+        "image": "https://images.pexels.com/photos/2974409/pexels-photo-2974409.jpeg",
+    },
+    {
+        "id": "mulch",
+        "title": "Mulch bare soil",
+        "body": "A 2-inch mulch layer prevents rain from splashing soil-borne spores up onto lower leaves.",
+        "image": "https://images.pexels.com/photos/10894359/pexels-photo-10894359.jpeg",
+    },
+]
+
+
+@api_router.get("/diseases")
+async def get_diseases():
+    return DISEASE_LIBRARY
+
+
+@api_router.get("/tips")
+async def get_tips():
+    return CARE_TIPS
+
+
+@api_router.get("/")
+async def root():
+    return {"message": "Plant Disease Detection API", "status": "ok"}
+
+
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()

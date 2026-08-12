@@ -1,0 +1,229 @@
+// REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+import { useEffect, useState, useCallback } from "react";
+import axios from "axios";
+import { motion } from "framer-motion";
+import { Leaf, History, BookOpen, Sparkles, Trash2, LogIn } from "lucide-react";
+import Header from "@/components/Header";
+import UploadZone from "@/components/UploadZone";
+import DiagnosisResult from "@/components/DiagnosisResult";
+import { Button } from "@/components/ui/button";
+import { API, useAuth } from "@/App";
+import { toast } from "sonner";
+
+export default function Dashboard() {
+  const { user, loading } = useAuth();
+  const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [diseases, setDiseases] = useState([]);
+  const [tips, setTips] = useState([]);
+  const [expandedHistory, setExpandedHistory] = useState(null);
+
+  const loadHistory = useCallback(async () => {
+    if (!user) return;
+    try {
+      const r = await axios.get(`${API}/history`);
+      setHistory(r.data);
+    } catch {}
+  }, [user]);
+
+  useEffect(() => {
+    axios.get(`${API}/diseases`).then((r) => setDiseases(r.data)).catch(() => {});
+    axios.get(`${API}/tips`).then((r) => setTips(r.data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  useEffect(() => {
+    if (result && user) loadHistory();
+  }, [result, user, loadHistory]);
+
+  const handleLogin = () => {
+    const redirectUrl = window.location.origin + "/dashboard";
+    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  };
+
+  const deleteDetection = async (id) => {
+    try {
+      await axios.delete(`${API}/history/${id}`);
+      toast.success("Removed from history");
+      setHistory((h) => h.filter((x) => x.id !== id));
+      if (expandedHistory?.id === id) setExpandedHistory(null);
+    } catch {
+      toast.error("Could not delete");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-botanical-bg">
+        <Leaf className="w-8 h-8 animate-pulse text-botanical-forest" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-botanical-bg text-botanical-ink" data-testid="dashboard-page">
+      <Header />
+
+      <main className="max-w-7xl mx-auto px-6 lg:px-10 py-12 lg:py-16">
+        <section>
+          <div className="flex items-end justify-between flex-wrap gap-4">
+            <div>
+              <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Diagnose</p>
+              <h1 className="font-serif text-4xl sm:text-5xl mt-2 tracking-tight text-botanical-ink">
+                {user ? `Welcome back, ${user.name.split(" ")[0]}` : "Try a scan"}
+              </h1>
+              <p className="text-botanical-muted mt-2 max-w-lg">
+                Upload a clear photo of a single leaf. Fill the frame, natural light, one leaf per shot.
+              </p>
+            </div>
+            {!user && (
+              <Button onClick={handleLogin} variant="outline" className="rounded-full border-botanical-forest/30 text-botanical-forest hover:bg-botanical-sage/40" data-testid="dashboard-signin-btn">
+                <LogIn className="w-4 h-4 mr-2" /> Sign in to save history
+              </Button>
+            )}
+          </div>
+
+          <div className="mt-10">
+            <UploadZone onResult={setResult} />
+          </div>
+
+          {result && (
+            <div className="mt-10">
+              <DiagnosisResult data={result} />
+            </div>
+          )}
+        </section>
+
+        {/* HISTORY */}
+        {user && (
+          <section id="history" className="mt-24">
+            <div className="flex items-end justify-between flex-wrap gap-4">
+              <div>
+                <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Your history</p>
+                <h2 className="font-serif text-3xl sm:text-4xl mt-2 tracking-tight text-botanical-ink">Past scans</h2>
+              </div>
+              <p className="text-sm text-botanical-muted flex items-center gap-2"><History className="w-4 h-4" /> {history.length} saved</p>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="mt-8 rounded-2xl border border-dashed border-botanical-forest/20 p-12 text-center text-botanical-muted" data-testid="history-empty">
+                No scans yet. Diagnose a leaf above and it appears here.
+              </div>
+            ) : (
+              <div className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {history.map((h, i) => (
+                  <motion.button
+                    key={h.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    onClick={() => setExpandedHistory(h)}
+                    className="group relative rounded-2xl overflow-hidden border border-botanical-forest/10 bg-white text-left hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(30,63,32,0.1)] transition-transform"
+                    data-testid={`history-card-${i}`}
+                  >
+                    <div className="aspect-square overflow-hidden">
+                      <img src={h.image_data_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                      <p className="text-white text-sm font-semibold truncate">{h.disease_name}</p>
+                      <p className="text-white/70 text-xs">{h.plant} · {h.severity}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteDetection(h.id); }}
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/80 opacity-0 group-hover:opacity-100 backdrop-blur flex items-center justify-center text-botanical-forest hover:bg-white transition-opacity"
+                      data-testid={`history-delete-${i}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </motion.button>
+                ))}
+              </div>
+            )}
+
+            {expandedHistory && (
+              <div className="mt-10">
+                <DiagnosisResult data={expandedHistory} />
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* DISEASE LIBRARY */}
+        <section id="library" className="mt-24">
+          <div className="flex items-end justify-between flex-wrap gap-4">
+            <div>
+              <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Encyclopedia</p>
+              <h2 className="font-serif text-3xl sm:text-4xl mt-2 tracking-tight text-botanical-ink">Common leaf diseases</h2>
+            </div>
+            <p className="text-sm text-botanical-muted flex items-center gap-2"><BookOpen className="w-4 h-4" /> {diseases.length} entries</p>
+          </div>
+
+          <div className="mt-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {diseases.map((d, i) => (
+              <motion.article
+                key={d.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+                className="rounded-2xl overflow-hidden bg-white border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.04)] hover:-translate-y-1 transition-transform"
+                data-testid={`disease-card-${i}`}
+              >
+                <div className="aspect-[4/3] overflow-hidden">
+                  <img src={d.image} alt={d.name} className="w-full h-full object-cover" />
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs uppercase tracking-[0.2em] font-semibold text-botanical-moss">{d.type}</span>
+                    <span className="text-botanical-muted">·</span>
+                    <span className="text-xs uppercase tracking-[0.2em] font-semibold" style={{ color: d.severity === "severe" ? "#D97757" : d.severity === "moderate" ? "#DDA76A" : "#4A6741" }}>{d.severity}</span>
+                  </div>
+                  <h3 className="font-serif text-2xl mt-3 text-botanical-ink">{d.name}</h3>
+                  <p className="text-xs text-botanical-muted mt-1">{d.plant}</p>
+                  <p className="text-sm text-botanical-ink mt-4 leading-relaxed"><span className="font-semibold">Symptoms · </span>{d.symptoms}</p>
+                  <p className="text-sm text-botanical-muted mt-2 leading-relaxed"><span className="font-semibold text-botanical-forest">Treatment · </span>{d.treatment}</p>
+                </div>
+              </motion.article>
+            ))}
+          </div>
+        </section>
+
+        {/* CARE TIPS */}
+        <section id="tips" className="mt-24 mb-16">
+          <div className="flex items-end justify-between flex-wrap gap-4">
+            <div>
+              <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Care & prevention</p>
+              <h2 className="font-serif text-3xl sm:text-4xl mt-2 tracking-tight text-botanical-ink">Six habits that keep leaves clean</h2>
+            </div>
+            <p className="text-sm text-botanical-muted flex items-center gap-2"><Sparkles className="w-4 h-4" /> Agronomist-approved</p>
+          </div>
+
+          <div className="mt-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tips.map((t, i) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+                className="rounded-2xl overflow-hidden bg-white border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.04)]"
+                data-testid={`tip-card-${i}`}
+              >
+                <div className="aspect-[16/9] overflow-hidden">
+                  <img src={t.image} alt={t.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="p-6">
+                  <h3 className="font-serif text-2xl text-botanical-ink">{t.title}</h3>
+                  <p className="text-sm text-botanical-muted mt-3 leading-relaxed">{t.body}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #F7F9F5;
+    color: #132A15;
+}
+
+.font-serif {
+    font-family: 'Cormorant Garamond', ui-serif, Georgia, serif;
+}
+
+.grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.leaf-gradient-text {
+    background: linear-gradient(135deg, #1E3F20 0%, #4A6741 60%, #A4907C 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+@layer base {
+    :root {
+        --background: 90 25% 97%;
+        --foreground: 120 35% 12%;
+        --card: 0 0% 100%;
+        --card-foreground: 120 35% 12%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 120 35% 12%;
+        --primary: 122 35% 18%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 105 18% 84%;
+        --secondary-foreground: 122 35% 18%;
+        --muted: 90 20% 92%;
+        --muted-foreground: 120 6% 40%;
+        --accent: 100 20% 82%;
+        --accent-foreground: 122 35% 18%;
+        --destructive: 12 61% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 122 20% 88%;
+        --input: 122 20% 88%;
+        --ring: 122 35% 18%;
+        --radius: 0.75rem;
+    }
+}
+
+@layer base {
+    * { @apply border-border; }
+    body { @apply bg-background text-foreground; }
+}
+
+::selection {
+    background: #1E3F20;
+    color: #F7F9F5;
+}
