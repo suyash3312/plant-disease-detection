@@ -33,3 +33,25 @@ AI vision-based diagnosis using Gemini 3 Flash (multimodal). Users upload a phot
 - P2: Share diagnosis via link.
 - P2: Multi-image batch scan for field walks.
 - P2: Weekly plant health email digest.
+
+
+## Update — June 2026 (session: branding + Kaggle tooling)
+- Removed all Emergent watermarks from `frontend/public/index.html`: badge script
+  (`assets.emergent.sh/scripts/emergent-main.js`), PostHog analytics block, "A product of
+  emergent.sh" meta description. Title is now "Verdaleaf | Plant Disease Detection".
+  Google-auth redirects to `auth.emergentagent.com` retained (functional, not branding).
+- Added `/app/LOCAL_SETUP.md`: run-on-your-own-machine guide (venv + uvicorn:8001, yarn:3000,
+  MongoDB, required .env keys, and the Secure/SameSite cookie caveat for login on http://localhost).
+- Added `/app/KAGGLE_DATASETS.md`: Kaggle API token setup, CLI + kagglehub commands, plant-disease
+  dataset slugs (PlantVillage, PlantDoc, Cassava, Rice), licensing notes.
+- Added `/app/scripts/kaggle_benchmark.py`: benchmarks `/api/detect` against any ImageFolder-style
+  labelled dataset; prints per-class + top-1 accuracy, writes `benchmark_report.json`.
+  Verified end-to-end (2 live detect calls, reporting/matching correct). NOT yet run on real
+  PlantVillage data — that needs the user's own Kaggle credentials.
+
+### Backlog (unchanged priority)
+- P0: Detection history/gallery UI (backend `GET /api/history` EXISTS; no dedicated frontend view).
+- P1: Disease library page (backend `GET /api/diseases` exists, 6 hardcoded entries).
+- P1: Care tips page (backend `GET /api/tips` exists, 6 hardcoded entries).
+  NOTE: Landing nav links to "Library" and "Care Tips" but App.js only routes `/` and `/dashboard`.
+- P2: Public share links for a scan; multi-image batch scan; weekly garden digest email.
