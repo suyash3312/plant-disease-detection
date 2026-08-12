@@ -2,11 +2,12 @@
 import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
-import { Leaf, History, BookOpen, Sparkles, Trash2, LogIn } from "lucide-react";
+import { Leaf, History, BookOpen, Sparkles, LogIn, ArrowRight } from "lucide-react";
 import Header from "@/components/Header";
 import UploadZone from "@/components/UploadZone";
 import DiagnosisResult from "@/components/DiagnosisResult";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { API, useAuth } from "@/App";
 import { useTheme } from "@/theme";
 import { toast } from "sonner";
@@ -18,13 +19,14 @@ export default function Dashboard() {
   const [history, setHistory] = useState([]);
   const [diseases, setDiseases] = useState([]);
   const [tips, setTips] = useState([]);
-  const [expandedHistory, setExpandedHistory] = useState(null);
+  const [historyTotal, setHistoryTotal] = useState(0);
 
   const loadHistory = useCallback(async () => {
     if (!user) return;
     try {
-      const r = await axios.get(`${API}/history`);
-      setHistory(r.data);
+      const r = await axios.get(`${API}/history`, { params: { limit: 6 } });
+      setHistory(r.data.items);
+      setHistoryTotal(r.data.total);
     } catch {}
   }, [user]);
 
@@ -46,17 +48,6 @@ export default function Dashboard() {
     window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
-  const deleteDetection = async (id) => {
-    try {
-      await axios.delete(`${API}/history/${id}`);
-      toast.success("Removed from history");
-      setHistory((h) => h.filter((x) => x.id !== id));
-      if (expandedHistory?.id === id) setExpandedHistory(null);
-    } catch {
-      toast.error("Could not delete");
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-botanical-bg">
@@ -69,7 +60,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-botanical-bg text-botanical-ink" data-testid="dashboard-page">
       <Header />
 
-      <main className="max-w-7xl mx-auto px-6 lg:px-10 py-12 lg:py-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 sm:py-14 lg:py-16">
         <section>
           <div className="flex items-end justify-between flex-wrap gap-4">
             <div>
@@ -77,7 +68,7 @@ export default function Dashboard() {
               <h1 className="font-serif text-4xl sm:text-5xl mt-2 tracking-tight text-botanical-ink">
                 {user ? `Welcome back, ${user.name.split(" ")[0]}` : "Try a scan"}
               </h1>
-              <p className="text-botanical-muted mt-2 max-w-lg">
+              <p className="text-sm md:text-base text-botanical-muted mt-2 max-w-lg">
                 Upload a clear photo of a single leaf. Fill the frame, natural light, one leaf per shot.
               </p>
             </div>
@@ -88,7 +79,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="mt-10">
+          <div className="mt-8 sm:mt-10">
             <UploadZone onResult={setResult} />
           </div>
 
@@ -99,62 +90,46 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* HISTORY */}
-        {user && (
-          <section id="history" className="mt-24">
-            <div className="flex items-end justify-between flex-wrap gap-4">
+        {/* RECENT SCANS */}
+        {user && history.length > 0 && (
+          <section id="history" className="mt-16 sm:mt-24">
+            <div className="flex items-end justify-between gap-4">
               <div>
                 <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Your history</p>
-                <h2 className="font-serif text-3xl sm:text-4xl mt-2 tracking-tight text-botanical-ink">Past scans</h2>
+                <h2 className="font-serif text-3xl sm:text-4xl mt-2 tracking-tight text-botanical-ink">Recent scans</h2>
               </div>
-              <p className="text-sm text-botanical-muted flex items-center gap-2"><History className="w-4 h-4" /> {history.length} saved</p>
+              <Link
+                to="/history"
+                className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-botanical-forest dark:text-botanical-moss hover:gap-2.5 transition-all"
+                data-testid="view-all-history-link"
+              >
+                <History className="w-4 h-4" /> All {historyTotal} <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
 
-            {history.length === 0 ? (
-              <div className="mt-8 rounded-2xl border border-dashed border-botanical-forest/20 p-12 text-center text-botanical-muted" data-testid="history-empty">
-                No scans yet. Diagnose a leaf above and it appears here.
-              </div>
-            ) : (
-              <div className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {history.map((h, i) => (
-                  <motion.button
-                    key={h.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    onClick={() => setExpandedHistory(h)}
-                    className="group relative rounded-2xl overflow-hidden border border-botanical-forest/10 bg-botanical-card text-left hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(30,63,32,0.1)] transition-transform"
-                    data-testid={`history-card-${i}`}
-                  >
-                    <div className="aspect-square overflow-hidden">
-                      <img src={h.image_data_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    </div>
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                      <p className="text-white text-sm font-semibold truncate">{h.disease_name}</p>
-                      <p className="text-white/70 text-xs">{h.plant} · {h.severity}</p>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteDetection(h.id); }}
-                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-botanical-card/85 opacity-0 group-hover:opacity-100 backdrop-blur flex items-center justify-center text-botanical-forest hover:bg-botanical-card transition-opacity"
-                      data-testid={`history-delete-${i}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </motion.button>
-                ))}
-              </div>
-            )}
-
-            {expandedHistory && (
-              <div className="mt-10">
-                <DiagnosisResult data={expandedHistory} />
-              </div>
-            )}
+            <div className="mt-6 flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 lg:grid-cols-6 sm:overflow-visible">
+              {history.map((h, i) => (
+                <Link
+                  key={h.id}
+                  to="/history"
+                  className="group relative shrink-0 w-36 sm:w-auto snap-start rounded-2xl overflow-hidden border border-botanical-forest/10 bg-botanical-card active:scale-[0.98] transition-transform"
+                  data-testid={`recent-scan-${i}`}
+                >
+                  <div className="aspect-square overflow-hidden">
+                    <img src={h.image_data_url} alt={h.disease_name} loading="lazy" className="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2.5">
+                    <p className="text-white text-xs font-semibold truncate">{h.disease_name}</p>
+                    <p className="text-white/70 text-[10px] truncate">{h.plant} · {h.is_healthy ? "healthy" : h.severity}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </section>
         )}
 
         {/* DISEASE LIBRARY */}
-        <section id="library" className="mt-24">
+        <section id="library" className="mt-16 sm:mt-24">
           <div className="flex items-end justify-between flex-wrap gap-4">
             <div>
               <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Encyclopedia</p>
@@ -163,7 +138,7 @@ export default function Dashboard() {
             <p className="text-sm text-botanical-muted flex items-center gap-2"><BookOpen className="w-4 h-4" /> {diseases.length} entries</p>
           </div>
 
-          <div className="mt-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {diseases.map((d, i) => (
               <motion.article
                 key={d.id}
@@ -177,7 +152,7 @@ export default function Dashboard() {
                 <div className="aspect-[4/3] overflow-hidden">
                   <img src={d.image} alt={d.name} className="w-full h-full object-cover" />
                 </div>
-                <div className="p-6">
+                <div className="p-5 sm:p-6">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs uppercase tracking-[0.2em] font-semibold text-botanical-moss">{d.type}</span>
                     <span className="text-botanical-muted">·</span>
@@ -194,7 +169,7 @@ export default function Dashboard() {
         </section>
 
         {/* CARE TIPS */}
-        <section id="tips" className="mt-24 mb-16">
+        <section id="tips" className="mt-16 sm:mt-24 mb-12 sm:mb-16">
           <div className="flex items-end justify-between flex-wrap gap-4">
             <div>
               <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Care & prevention</p>
@@ -203,7 +178,7 @@ export default function Dashboard() {
             <p className="text-sm text-botanical-muted flex items-center gap-2"><Sparkles className="w-4 h-4" /> Agronomist-approved</p>
           </div>
 
-          <div className="mt-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {tips.map((t, i) => (
               <motion.div
                 key={t.id}
@@ -217,7 +192,7 @@ export default function Dashboard() {
                 <div className="aspect-[16/9] overflow-hidden">
                   <img src={t.image} alt={t.title} className="w-full h-full object-cover" />
                 </div>
-                <div className="p-6">
+                <div className="p-5 sm:p-6">
                   <h3 className="font-serif text-2xl text-botanical-ink">{t.title}</h3>
                   <p className="text-sm text-botanical-muted mt-3 leading-relaxed">{t.body}</p>
                 </div>

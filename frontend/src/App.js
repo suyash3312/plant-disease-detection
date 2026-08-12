@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
+import ScanHistory from "@/pages/ScanHistory";
 import AuthCallback from "@/pages/AuthCallback";
 import { ThemeProvider, useTheme } from "@/theme";
 
@@ -64,6 +65,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/history" element={<ScanHistory />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

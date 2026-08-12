@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Leaf, Loader2, X } from "lucide-react";
+import { Upload, Leaf, Loader2, X, Camera } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import axios from "axios";
 import { API } from "@/App";
+import { CameraCapture } from "@/components/CameraCapture";
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -19,7 +20,12 @@ export default function UploadZone({ onResult }) {
   const [dragOver, setDragOver] = useState(false);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const inputRef = useRef();
+  const captureInputRef = useRef();
+
+  const supportsLiveCamera =
+    typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia && window.isSecureContext;
 
   const handleFiles = useCallback(async (files) => {
     if (!files || !files[0]) return;
@@ -57,6 +63,19 @@ export default function UploadZone({ onResult }) {
     }
   };
 
+  const openCamera = () => {
+    if (supportsLiveCamera) {
+      setCameraOpen(true);
+    } else {
+      captureInputRef.current?.click();
+    }
+  };
+
+  const handleCapture = (dataUrl) => {
+    setCameraOpen(false);
+    setPreview(dataUrl);
+  };
+
   const clear = () => {
     setPreview(null);
     if (inputRef.current) inputRef.current.value = "";
@@ -65,11 +84,12 @@ export default function UploadZone({ onResult }) {
   return (
     <div className="rounded-3xl bg-botanical-card border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.05)] p-6 sm:p-10" data-testid="upload-card">
       {!preview ? (
+        <>
         <label
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          className={`flex flex-col items-center justify-center text-center p-12 md:p-16 rounded-2xl border-2 border-dashed cursor-pointer transition-colors ${
+          className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 md:p-16 rounded-2xl border-2 border-dashed cursor-pointer transition-colors ${
             dragOver ? "border-botanical-forest bg-botanical-sage/40" : "border-botanical-forest/20 hover:border-botanical-forest/40 hover:bg-botanical-bg2"
           }`}
           data-testid="upload-area"
@@ -91,6 +111,28 @@ export default function UploadZone({ onResult }) {
             data-testid="upload-file-input"
           />
         </label>
+
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <span className="text-xs uppercase tracking-[0.25em] text-botanical-muted">or</span>
+          <Button
+            onClick={openCamera}
+            variant="outline"
+            className="rounded-full border-botanical-forest/30 text-botanical-forest dark:text-botanical-moss dark:border-botanical-moss/40 hover:bg-botanical-sage/40 h-11 px-6 w-full sm:w-auto"
+            data-testid="open-camera-btn"
+          >
+            <Camera className="w-4 h-4 mr-2" /> Use live camera
+          </Button>
+        </div>
+        <input
+          ref={captureInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+          data-testid="camera-fallback-input"
+        />
+        </>
       ) : (
         <div className="grid md:grid-cols-2 gap-8 items-center">
           <motion.div
@@ -125,6 +167,10 @@ export default function UploadZone({ onResult }) {
             </Button>
           </div>
         </div>
+      )}
+
+      {cameraOpen && (
+        <CameraCapture onCapture={handleCapture} onClose={() => setCameraOpen(false)} />
       )}
     </div>
   );

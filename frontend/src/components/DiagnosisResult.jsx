@@ -52,7 +52,7 @@ export default function DiagnosisResult({ data }) {
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="grid lg:grid-cols-5 gap-6"
+      className="grid lg:grid-cols-5 gap-4 sm:gap-6"
       data-testid="diagnosis-result"
     >
       {/* Left: hero result */}
@@ -63,7 +63,7 @@ export default function DiagnosisResult({ data }) {
             {data.plant}
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-5 sm:p-6">
           <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Diagnosis</p>
           <h3 className="font-serif text-3xl mt-2 text-botanical-ink" data-testid="result-disease-name">{data.disease_name}</h3>
           <div className="mt-4 flex items-center gap-3 text-sm">
@@ -89,9 +89,9 @@ export default function DiagnosisResult({ data }) {
       </div>
 
       {/* Right: bento data */}
-      <div className="lg:col-span-3 grid grid-rows-[auto_1fr] gap-6">
-        <div className="grid sm:grid-cols-2 gap-6">
-          <div className="rounded-2xl bg-botanical-card border border-botanical-forest/10 p-6 shadow-[0_8px_30px_rgba(30,63,32,0.04)]">
+      <div className="lg:col-span-3 grid grid-rows-[auto_1fr] gap-4 sm:gap-6">
+        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+          <div className="rounded-2xl bg-botanical-card border border-botanical-forest/10 p-5 sm:p-6 shadow-[0_8px_30px_rgba(30,63,32,0.04)]">
             <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold">Severity</p>
             <div className="mt-4 flex items-baseline gap-2">
               <span className="font-serif text-5xl text-botanical-ink" data-testid="result-severity-score">{data.severity_score}</span>
@@ -107,7 +107,7 @@ export default function DiagnosisResult({ data }) {
               />
             </div>
           </div>
-          <div className="rounded-2xl bg-botanical-forest text-white p-6 relative overflow-hidden">
+          <div className="rounded-2xl bg-botanical-forest text-white p-5 sm:p-6 relative overflow-hidden">
             <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-botanical-moss/50 blur-3xl" />
             <p className="text-xs tracking-[0.25em] uppercase text-white/75 font-semibold relative">Symptoms observed</p>
             <ul className="mt-4 space-y-2 text-sm text-white/90 relative">
@@ -120,13 +120,13 @@ export default function DiagnosisResult({ data }) {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-botanical-card border border-botanical-forest/10 p-6 shadow-[0_8px_30px_rgba(30,63,32,0.04)]">
+        <div className="rounded-2xl bg-botanical-card border border-botanical-forest/10 p-5 sm:p-6 shadow-[0_8px_30px_rgba(30,63,32,0.04)]">
           <Tabs defaultValue="treatment" className="w-full">
             <TabsList className="bg-botanical-bg2 rounded-full p-1">
-              <TabsTrigger value="treatment" className="rounded-full px-5 data-[state=active]:bg-botanical-card data-[state=active]:text-botanical-forest data-[state=active]:shadow-sm dark:data-[state=active]:bg-botanical-sage dark:data-[state=active]:text-botanical-moss" data-testid="tab-treatment">
+              <TabsTrigger value="treatment" className="rounded-full px-4 sm:px-5 text-xs sm:text-sm data-[state=active]:bg-botanical-card data-[state=active]:text-botanical-forest data-[state=active]:shadow-sm dark:data-[state=active]:bg-botanical-sage dark:data-[state=active]:text-botanical-moss" data-testid="tab-treatment">
                 <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Treatment
               </TabsTrigger>
-              <TabsTrigger value="prevention" className="rounded-full px-5 data-[state=active]:bg-botanical-card data-[state=active]:text-botanical-forest data-[state=active]:shadow-sm dark:data-[state=active]:bg-botanical-sage dark:data-[state=active]:text-botanical-moss" data-testid="tab-prevention">
+              <TabsTrigger value="prevention" className="rounded-full px-4 sm:px-5 text-xs sm:text-sm data-[state=active]:bg-botanical-card data-[state=active]:text-botanical-forest data-[state=active]:shadow-sm dark:data-[state=active]:bg-botanical-sage dark:data-[state=active]:text-botanical-moss" data-testid="tab-prevention">
                 <Shield className="w-3.5 h-3.5 mr-1.5" /> Prevention
               </TabsTrigger>
             </TabsList>

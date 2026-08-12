@@ -27,7 +27,7 @@ export default function Landing() {
 
       {/* HERO */}
       <section className="relative overflow-hidden grain">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-16 pb-24 lg:pt-24 lg:pb-32 grid lg:grid-cols-12 gap-10 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-12 sm:pt-16 pb-16 sm:pb-24 lg:pt-24 lg:pb-32 grid lg:grid-cols-12 gap-10 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -123,7 +123,7 @@ export default function Landing() {
       </section>
 
       {/* FEATURES */}
-      <section id="how" className="max-w-7xl mx-auto px-6 lg:px-10 py-20">
+      <section id="how" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-20">
         <div className="max-w-2xl">
           <p className="text-xs tracking-[0.25em] uppercase text-botanical-moss font-semibold" data-testid="features-eyebrow">The workflow</p>
           <h2 className="font-serif text-4xl sm:text-5xl tracking-tight mt-3 text-botanical-ink">
@@ -153,7 +153,7 @@ export default function Landing() {
       </section>
 
       {/* CTA STRIP */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 pb-24">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pb-16 sm:pb-24">
         <div className="rounded-3xl bg-botanical-forest text-white p-12 lg:p-16 grid md:grid-cols-2 gap-10 items-center relative overflow-hidden">
           <div className="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-botanical-moss/40 blur-3xl" />
           <div className="relative">
@@ -185,7 +185,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <footer className="max-w-7xl mx-auto px-6 lg:px-10 py-10 flex flex-wrap items-center justify-between gap-4 text-sm text-botanical-muted border-t border-botanical-forest/10">
+      <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 flex flex-wrap items-center justify-between gap-4 text-sm text-botanical-muted border-t border-botanical-forest/10">
         <span className="font-serif text-lg text-botanical-ink">Verdaleaf</span>
         <span>© {new Date().getFullYear()} · Made for growers</span>
       </footer>

@@ -7,6 +7,7 @@ import os
 import base64
 import json
 import logging
+from collections import Counter
 import uuid
 import re
 from pathlib import Path
@@ -259,12 +260,63 @@ async def detect(request: Request, payload: DetectRequest):
 
 
 @api_router.get("/history")
-async def history(request: Request):
+async def history(request: Request, q: str = "", status: str = "all", limit: int = 24, skip: int = 0):
     user = await get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Sign in to view history")
-    items = await db.detections.find({"user_id": user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(200)
-    return items
+
+    query = {"user_id": user.user_id}
+    if status == "healthy":
+        query["is_healthy"] = True
+    elif status == "diseased":
+        query["is_healthy"] = False
+    if q:
+        query["$or"] = [
+            {"disease_name": {"$regex": q, "$options": "i"}},
+            {"plant": {"$regex": q, "$options": "i"}},
+        ]
+
+    total = await db.detections.count_documents(query)
+    limit = max(1, min(limit, 60))
+    items = (
+        await db.detections.find(query, {"_id": 0})
+        .sort("created_at", -1)
+        .skip(max(0, skip))
+        .limit(limit)
+        .to_list(limit)
+    )
+    return {"items": items, "total": total}
+
+
+@api_router.get("/history/stats")
+async def history_stats(request: Request):
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Sign in to view history")
+
+    docs = await db.detections.find(
+        {"user_id": user.user_id},
+        {"_id": 0, "is_healthy": 1, "disease_name": 1, "severity": 1, "plant": 1, "created_at": 1},
+    ).to_list(1000)
+
+    healthy = sum(1 for d in docs if d.get("is_healthy"))
+    severe = sum(1 for d in docs if not d.get("is_healthy") and d.get("severity") == "severe")
+    issues = Counter(d.get("disease_name") for d in docs if not d.get("is_healthy") and d.get("disease_name"))
+    plants = Counter(d.get("plant") for d in docs if d.get("plant"))
+    dates = [d.get("created_at") for d in docs if d.get("created_at")]
+    last = max(dates) if dates else None
+
+    return {
+        "total": len(docs),
+        "healthy": healthy,
+        "diseased": len(docs) - healthy,
+        "severe": severe,
+        "top_issue": issues.most_common(1)[0][0] if issues else None,
+        "top_issue_count": issues.most_common(1)[0][1] if issues else 0,
+        "top_plant": plants.most_common(1)[0][0] if plants else None,
+        "plants_tracked": len(plants),
+        "last_scan_at": last.isoformat() if hasattr(last, "isoformat") else last,
+    }
 
 
 @api_router.delete("/history/{det_id}")
