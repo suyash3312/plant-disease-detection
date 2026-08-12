@@ -63,7 +63,7 @@ export default function UploadZone({ onResult }) {
   };
 
   return (
-    <div className="rounded-3xl bg-white border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.05)] p-6 sm:p-10" data-testid="upload-card">
+    <div className="rounded-3xl bg-botanical-card border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.05)] p-6 sm:p-10" data-testid="upload-card">
       {!preview ? (
         <label
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -74,12 +74,12 @@ export default function UploadZone({ onResult }) {
           }`}
           data-testid="upload-area"
         >
-          <div className="w-16 h-16 rounded-full bg-botanical-sage/60 flex items-center justify-center text-botanical-forest mb-6">
+          <div className="w-16 h-16 rounded-full bg-botanical-sage/60 dark:bg-botanical-moss/20 flex items-center justify-center text-botanical-forest dark:text-botanical-moss mb-6">
             <Leaf className="w-7 h-7" />
           </div>
           <p className="font-serif text-2xl text-botanical-ink">Drag & drop a leaf photo</p>
           <p className="text-sm text-botanical-muted mt-2">or click to browse — JPG, PNG, WebP up to 8 MB</p>
-          <div className="mt-8 inline-flex items-center gap-2 text-sm text-botanical-forest font-semibold">
+          <div className="mt-8 inline-flex items-center gap-2 text-sm text-botanical-forest dark:text-botanical-moss font-semibold">
             <Upload className="w-4 h-4" /> Select file
           </div>
           <input
@@ -102,7 +102,7 @@ export default function UploadZone({ onResult }) {
             <img src={preview} alt="leaf preview" className="w-full h-full object-cover" />
             <button
               onClick={clear}
-              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-botanical-forest hover:bg-white"
+              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-botanical-card/90 backdrop-blur flex items-center justify-center text-botanical-forest hover:bg-botanical-card"
               data-testid="clear-preview-btn"
             >
               <X className="w-4 h-4" />
@@ -118,7 +118,7 @@ export default function UploadZone({ onResult }) {
             <Button
               onClick={runDetection}
               disabled={loading}
-              className="mt-8 rounded-full bg-botanical-forest text-white hover:bg-botanical-ink h-12 px-8 active:scale-95 transition-all disabled:opacity-70"
+              className="mt-8 rounded-full bg-botanical-forest text-white hover:bg-botanical-hover h-12 px-8 active:scale-95 transition-all disabled:opacity-70"
               data-testid="run-detection-btn"
             >
               {loading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing…</>) : (<>Diagnose leaf</>)}

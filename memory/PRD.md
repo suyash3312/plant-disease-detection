@@ -55,3 +55,27 @@ AI vision-based diagnosis using Gemini 3 Flash (multimodal). Users upload a phot
 - P1: Care tips page (backend `GET /api/tips` exists, 6 hardcoded entries).
   NOTE: Landing nav links to "Library" and "Care Tips" but App.js only routes `/` and `/dashboard`.
 - P2: Public share links for a scan; multi-image batch scan; weekly garden digest email.
+
+## Update — June 2026 (dark theme)
+- Dark theme shipped. Approach: converted the hardcoded `botanical-*` hex palette in
+  `tailwind.config.js` into CSS variables (`--bot-*`), defined twice in `src/index.css`
+  (`:root` = light, `.dark` = dark). One class on `<html>` re-themes the entire app, so light
+  mode is byte-for-byte visually unchanged.
+- New files: `src/theme.jsx` (ThemeProvider/useTheme, localStorage key `verdaleaf-theme`,
+  falls back to `prefers-color-scheme`), `src/components/ThemeToggle.jsx`
+  (sun/moon toggle in the header, `data-testid="theme-toggle"`).
+- No-flash: inline script in `public/index.html` applies `.dark` before React mounts.
+- Sonner toasts receive the active theme via `ThemedToaster` in `App.js`.
+- New tokens: `botanical-card` (was hardcoded `bg-white`) and `botanical-hover`
+  (replaces `hover:bg-botanical-ink`, which would have inverted in dark).
+- Theme-aware severity palettes: `sevColor.light` / `sevColor.dark` in `DiagnosisResult.jsx`,
+  and a matching ternary in `Dashboard.jsx` (~line 184).
+- GOTCHA for future work: in the dark palette `--bot-forest` is LIGHTER while `--bot-sage` is
+  DARKER than in light, which inverts the "sage background + forest foreground" pairing.
+  Any new element using that pair needs `dark:text-botanical-moss` +
+  `dark:bg-botanical-moss/20`.
+- Testing: iteration_2 found 3 contrast regressions (active tab weaker than inactive, invisible
+  icon chips / step pills, dim "Select file" hint) — all fixed and re-verified in iteration_3
+  (100% frontend pass, real Gemini scan + PDF download confirmed working in dark mode).
+- NOTE: browse the preview URL, not http://localhost:3000 — the frontend calls the external
+  REACT_APP_BACKEND_URL with credentials, so localhost origin fails CORS (backend CORS_ORIGINS='*').

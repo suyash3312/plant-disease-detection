@@ -8,10 +8,12 @@ import UploadZone from "@/components/UploadZone";
 import DiagnosisResult from "@/components/DiagnosisResult";
 import { Button } from "@/components/ui/button";
 import { API, useAuth } from "@/App";
+import { useTheme } from "@/theme";
 import { toast } from "sonner";
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
+  const { theme } = useTheme();
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
   const [diseases, setDiseases] = useState([]);
@@ -80,7 +82,7 @@ export default function Dashboard() {
               </p>
             </div>
             {!user && (
-              <Button onClick={handleLogin} variant="outline" className="rounded-full border-botanical-forest/30 text-botanical-forest hover:bg-botanical-sage/40" data-testid="dashboard-signin-btn">
+              <Button onClick={handleLogin} variant="outline" className="rounded-full border-botanical-forest/30 text-botanical-forest dark:text-botanical-moss dark:border-botanical-moss/40 hover:bg-botanical-sage/40" data-testid="dashboard-signin-btn">
                 <LogIn className="w-4 h-4 mr-2" /> Sign in to save history
               </Button>
             )}
@@ -121,7 +123,7 @@ export default function Dashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
                     onClick={() => setExpandedHistory(h)}
-                    className="group relative rounded-2xl overflow-hidden border border-botanical-forest/10 bg-white text-left hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(30,63,32,0.1)] transition-transform"
+                    className="group relative rounded-2xl overflow-hidden border border-botanical-forest/10 bg-botanical-card text-left hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(30,63,32,0.1)] transition-transform"
                     data-testid={`history-card-${i}`}
                   >
                     <div className="aspect-square overflow-hidden">
@@ -133,7 +135,7 @@ export default function Dashboard() {
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteDetection(h.id); }}
-                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/80 opacity-0 group-hover:opacity-100 backdrop-blur flex items-center justify-center text-botanical-forest hover:bg-white transition-opacity"
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-botanical-card/85 opacity-0 group-hover:opacity-100 backdrop-blur flex items-center justify-center text-botanical-forest hover:bg-botanical-card transition-opacity"
                       data-testid={`history-delete-${i}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -169,7 +171,7 @@ export default function Dashboard() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
-                className="rounded-2xl overflow-hidden bg-white border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.04)] hover:-translate-y-1 transition-transform"
+                className="rounded-2xl overflow-hidden bg-botanical-card border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.04)] hover:-translate-y-1 transition-transform"
                 data-testid={`disease-card-${i}`}
               >
                 <div className="aspect-[4/3] overflow-hidden">
@@ -179,12 +181,12 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs uppercase tracking-[0.2em] font-semibold text-botanical-moss">{d.type}</span>
                     <span className="text-botanical-muted">·</span>
-                    <span className="text-xs uppercase tracking-[0.2em] font-semibold" style={{ color: d.severity === "severe" ? "#D97757" : d.severity === "moderate" ? "#DDA76A" : "#4A6741" }}>{d.severity}</span>
+                    <span className="text-xs uppercase tracking-[0.2em] font-semibold" style={{ color: theme === "dark" ? (d.severity === "severe" ? "#E8927C" : d.severity === "moderate" ? "#E8BC84" : "#7CBF85") : (d.severity === "severe" ? "#D97757" : d.severity === "moderate" ? "#DDA76A" : "#4A6741") }}>{d.severity}</span>
                   </div>
                   <h3 className="font-serif text-2xl mt-3 text-botanical-ink">{d.name}</h3>
                   <p className="text-xs text-botanical-muted mt-1">{d.plant}</p>
                   <p className="text-sm text-botanical-ink mt-4 leading-relaxed"><span className="font-semibold">Symptoms · </span>{d.symptoms}</p>
-                  <p className="text-sm text-botanical-muted mt-2 leading-relaxed"><span className="font-semibold text-botanical-forest">Treatment · </span>{d.treatment}</p>
+                  <p className="text-sm text-botanical-muted mt-2 leading-relaxed"><span className="font-semibold text-botanical-forest dark:text-botanical-moss">Treatment · </span>{d.treatment}</p>
                 </div>
               </motion.article>
             ))}
@@ -209,7 +211,7 @@ export default function Dashboard() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
-                className="rounded-2xl overflow-hidden bg-white border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.04)]"
+                className="rounded-2xl overflow-hidden bg-botanical-card border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.04)]"
                 data-testid={`tip-card-${i}`}
               >
                 <div className="aspect-[16/9] overflow-hidden">

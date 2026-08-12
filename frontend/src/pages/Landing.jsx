@@ -49,7 +49,7 @@ export default function Landing() {
               {user ? (
                 <Link to="/dashboard">
                   <Button
-                    className="rounded-full bg-botanical-forest text-white hover:bg-botanical-ink px-7 h-12 text-base active:scale-95 transition-all"
+                    className="rounded-full bg-botanical-forest text-white hover:bg-botanical-hover px-7 h-12 text-base active:scale-95 transition-all"
                     data-testid="hero-open-dashboard-button"
                   >
                     Open dashboard <ArrowUpRight className="w-4 h-4 ml-1" />
@@ -58,7 +58,7 @@ export default function Landing() {
               ) : (
                 <Button
                   onClick={handleLogin}
-                  className="rounded-full bg-botanical-forest text-white hover:bg-botanical-ink px-7 h-12 text-base active:scale-95 transition-all"
+                  className="rounded-full bg-botanical-forest text-white hover:bg-botanical-hover px-7 h-12 text-base active:scale-95 transition-all"
                   data-testid="hero-cta-signin"
                 >
                   Sign in & diagnose <ArrowUpRight className="w-4 h-4 ml-1" />
@@ -67,7 +67,7 @@ export default function Landing() {
               <a href="#how">
                 <Button
                   variant="outline"
-                  className="rounded-full border-botanical-forest/30 text-botanical-forest hover:bg-botanical-sage/40 px-7 h-12 text-base"
+                  className="rounded-full border-botanical-forest/30 text-botanical-forest dark:text-botanical-moss dark:border-botanical-moss/40 hover:bg-botanical-sage/40 px-7 h-12 text-base"
                   data-testid="hero-how-button"
                 >
                   How it works
@@ -113,7 +113,7 @@ export default function Landing() {
                 </div>
               </div>
             </div>
-            <div className="hidden md:block absolute -left-8 -bottom-8 w-52 rounded-2xl bg-white border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.08)] p-5">
+            <div className="hidden md:block absolute -left-8 -bottom-8 w-52 rounded-2xl bg-botanical-card border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.08)] p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-botanical-moss font-semibold">Confidence</p>
               <p className="font-serif text-4xl mt-1 text-botanical-ink">94%</p>
               <p className="text-xs text-botanical-muted mt-2">Gemini 3 vision · 400ms</p>
@@ -139,10 +139,10 @@ export default function Landing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.08 }}
-              className="group p-8 rounded-2xl bg-white border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.04)] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(30,63,32,0.08)] transition-transform"
+              className="group p-8 rounded-2xl bg-botanical-card border border-botanical-forest/10 shadow-[0_8px_30px_rgba(30,63,32,0.04)] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(30,63,32,0.08)] transition-transform"
               data-testid={`feature-card-${i}`}
             >
-              <div className="w-11 h-11 rounded-xl bg-botanical-sage/60 flex items-center justify-center text-botanical-forest">
+              <div className="w-11 h-11 rounded-xl bg-botanical-sage/60 dark:bg-botanical-moss/20 flex items-center justify-center text-botanical-forest dark:text-botanical-moss">
                 <f.icon className="w-5 h-5" />
               </div>
               <h3 className="font-serif text-2xl mt-6 text-botanical-ink">{f.title}</h3>
@@ -157,7 +157,7 @@ export default function Landing() {
         <div className="rounded-3xl bg-botanical-forest text-white p-12 lg:p-16 grid md:grid-cols-2 gap-10 items-center relative overflow-hidden">
           <div className="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-botanical-moss/40 blur-3xl" />
           <div className="relative">
-            <p className="text-xs tracking-[0.25em] uppercase text-botanical-sage font-semibold">Ready?</p>
+            <p className="text-xs tracking-[0.25em] uppercase text-white/75 font-semibold">Ready?</p>
             <h2 className="font-serif text-4xl lg:text-5xl mt-3 leading-tight">
               Your first diagnosis takes ten seconds.
             </h2>
@@ -168,14 +168,14 @@ export default function Landing() {
           <div className="relative flex md:justify-end">
             {user ? (
               <Link to="/dashboard">
-                <Button className="rounded-full bg-white text-botanical-forest hover:bg-botanical-sage px-8 h-14 text-base" data-testid="cta-dashboard-btn">
+                <Button className="rounded-full bg-white text-[#1E3F20] hover:bg-[#E2EBE1] px-8 h-14 text-base" data-testid="cta-dashboard-btn">
                   Open the diagnosis tool <ArrowUpRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
             ) : (
               <Button
                 onClick={handleLogin}
-                className="rounded-full bg-white text-botanical-forest hover:bg-botanical-sage px-8 h-14 text-base"
+                className="rounded-full bg-white text-[#1E3F20] hover:bg-[#E2EBE1] px-8 h-14 text-base"
                 data-testid="cta-signin-btn"
               >
                 Sign in with Google <ArrowUpRight className="w-4 h-4 ml-2" />

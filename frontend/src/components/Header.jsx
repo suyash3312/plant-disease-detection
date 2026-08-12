@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Leaf, LogOut } from "lucide-react";
 import { useAuth } from "@/App";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -42,6 +43,7 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           {user ? (
             <>
               <div className="hidden sm:flex items-center gap-2" data-testid="user-badge">
@@ -62,7 +64,7 @@ export default function Header() {
           ) : (
             <Button
               onClick={handleLogin}
-              className="rounded-full bg-botanical-forest text-white hover:bg-botanical-ink active:scale-95 transition-all"
+              className="rounded-full bg-botanical-forest text-white hover:bg-botanical-hover active:scale-95 transition-all"
               data-testid={location.pathname === "/" ? "header-login-button" : "header-login-button-dash"}
             >
               Sign in with Google
