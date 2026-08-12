@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -16,6 +16,8 @@ from datetime import datetime, timezone, timedelta
 import httpx
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+
+from pdf_report import build_report_pdf
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -272,6 +274,39 @@ async def delete_detection(det_id: str, request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     result = await db.detections.delete_one({"id": det_id, "user_id": user.user_id})
     return {"deleted": result.deleted_count}
+
+
+# ---------- PDF Report ----------
+class ReportRequest(BaseModel):
+    id: Optional[str] = None
+    disease_name: str
+    plant: str = "Unknown"
+    is_healthy: bool = False
+    confidence: int = 0
+    severity: str = "low"
+    severity_score: int = 0
+    symptoms: List[str] = []
+    treatments: List[str] = []
+    prevention: List[str] = []
+    image_data_url: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+@api_router.post("/report/pdf")
+async def report_pdf(payload: ReportRequest):
+    try:
+        pdf_bytes = build_report_pdf(payload.model_dump())
+    except Exception:
+        logging.exception("PDF generation failed")
+        raise HTTPException(status_code=500, detail="Could not generate PDF report")
+
+    safe_name = re.sub(r"[^a-zA-Z0-9]+", "-", payload.disease_name).strip("-").lower() or "diagnosis"
+    filename = f"verdaleaf-{safe_name}.pdf"
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------- Static content: diseases + tips ----------

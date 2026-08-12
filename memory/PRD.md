@@ -23,13 +23,13 @@ AI vision-based diagnosis using Gemini 3 Flash (multimodal). Users upload a phot
 - Auth: Emergent-managed Google OAuth with httpOnly session cookies (7-day expiry).
 
 ## What's implemented (Feb 2026)
-- Backend: /api/auth/session, /api/auth/me, /api/auth/logout, /api/detect, /api/history (GET + DELETE), /api/diseases, /api/tips.
+- Backend: /api/auth/session, /api/auth/me, /api/auth/logout, /api/detect, /api/history (GET + DELETE), /api/diseases, /api/tips, /api/report/pdf (POST).
 - Frontend: Landing (hero + features + CTA), Dashboard (upload + result + history + library + tips), AuthCallback.
 - Botanical green design system (Cormorant Garamond + Manrope, tactile cards, pill buttons).
+- PDF report export (Feb 2026): POST /api/report/pdf (reportlab, `backend/pdf_report.py`) generates a printable branded report (leaf photo, diagnosis, severity meter, confidence, symptoms, numbered treatments, prevention, AI disclaimer footer). "Download PDF report" button on every DiagnosisResult (fresh scans + history). E2E tested.
 
 ## Backlog / next
 - P1: Camera capture on mobile (getUserMedia).
-- P1: PDF export of a scan report.
 - P2: Share diagnosis via link.
 - P2: Multi-image batch scan for field walks.
 - P2: Weekly plant health email digest.

@@ -1,6 +1,10 @@
+import { useState } from "react";
+import axios from "axios";
 import { motion } from "framer-motion";
-import { CheckCircle2, AlertTriangle, Flame, Sparkles, Shield } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Flame, Sparkles, Shield, FileDown, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { API } from "@/App";
+import { toast } from "sonner";
 
 const sevColor = {
   low: "#4A6741",
@@ -15,9 +19,31 @@ const sevIcon = {
 };
 
 export default function DiagnosisResult({ data }) {
+  const [downloading, setDownloading] = useState(false);
+
   if (!data) return null;
   const SevIcon = data.is_healthy ? CheckCircle2 : sevIcon[data.severity] || AlertTriangle;
   const color = data.is_healthy ? "#4A6741" : sevColor[data.severity] || "#4A6741";
+
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const r = await axios.post(`${API}/report/pdf`, data, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([r.data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `verdaleaf-${(data.disease_name || "diagnosis").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("PDF report downloaded");
+    } catch {
+      toast.error("Could not generate PDF report");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <motion.div
@@ -48,6 +74,15 @@ export default function DiagnosisResult({ data }) {
             <span className="text-botanical-muted">·</span>
             <span className="text-botanical-muted" data-testid="result-confidence">{data.confidence}% confidence</span>
           </div>
+          <button
+            onClick={downloadPdf}
+            disabled={downloading}
+            className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-full bg-botanical-forest text-white text-sm font-semibold px-5 py-2.5 hover:bg-botanical-moss transition-colors disabled:opacity-60"
+            data-testid="download-pdf-btn"
+          >
+            {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            {downloading ? "Preparing report…" : "Download PDF report"}
+          </button>
         </div>
       </div>
 
